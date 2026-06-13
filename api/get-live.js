@@ -1,21 +1,38 @@
-// 🏢 ENGINE SERVERLESS VERCEL v3.7 — SUPREME ANTI-JEBOL DEFENSIVE EDITION
+// 🏢 ENGINE SERVERLESS VERCEL v3.8 — AUTO-DETECT JSON FORMAT (ANTI FOR-EACH CRASH)
 const fs = require('fs');
 const path = require('path');
 
 export default function handler(req, res) {
     try {
-        // 🚨 CONFIG: PASTIIN NAMA FOLDER DI SINI SAMA KAYA DI GITHUB LU (database atau basedata)
         const NAMA_FOLDER_DATA = 'basedata'; 
-
         const filePath = path.join(process.cwd(), NAMA_FOLDER_DATA, 'trains.json');
         
-        // Cek fisik file dulu di server biar gak crash ghaib
         if (!fs.existsSync(filePath)) {
             return res.status(404).json({ error: `File trains.json kagak ketemu di folder '${NAMA_FOLDER_DATA}/', bre! 💀` });
         }
 
         const fileData = fs.readFileSync(filePath, 'utf8');
-        const dbTrains = JSON.parse(fileData);
+        const parsedData = JSON.parse(fileData);
+
+        // 🚨 AUTOMATIC ARRAY DETECTOR JALUR GAIB
+        let dbTrains = [];
+        if (Array.isArray(parsedData)) {
+            dbTrains = parsedData; // Kalo emang udah array polos, langsung gas
+        } else if (parsedData && typeof parsedData === 'object') {
+            // Kalo tipenya objek, kita ulik otomatis nyari properti yang isinya array!
+            const keys = Object.keys(parsedData);
+            for (let key of keys) {
+                if (Array.isArray(parsedData[key])) {
+                    dbTrains = parsedData[key];
+                    break;
+                }
+            }
+        }
+
+        // Kalo setelah diulik tetep gagal nemu array, keluarin baris info aman
+        if (!dbTrains || dbTrains.length === 0) {
+            return res.status(422).json({ error: "Struktur trains.json lo ngaco gaeess, kagak nemu Array di dalemnya! 💀" });
+        }
 
         // 2. LOGIKA PENENTU SUMBU WAKTU WIB
         let currentMs;
@@ -31,10 +48,9 @@ export default function handler(req, res) {
 
         const processedLiveTrains = [];
 
-        // 3. LOOPING AMAN DENGAN PERTAHANAN LAPIS BAJA
+        // 3. LOOPING AMAN JAYA SENTOSA LINTAS DAOP
         dbTrains.forEach(train => {
             try {
-                // Skip kalo objek keretanya rusak atau kagak ada data rute paths-nya, gaeesss
                 if (!train || !train.paths || train.paths.length < 2) return;
 
                 const paths = train.paths;
@@ -47,35 +63,34 @@ export default function handler(req, res) {
                         if (paths[i] && paths[i+1] && currentMs >= paths[i].depart_ms && currentMs <= paths[i+1].arriv_ms) {
                             activeIdx = i;
                             break;
+                        }
+                    }
+
+                    if (activeIdx !== -1) {
+                        const nodeA = paths[activeIdx];
+                        const nodeB = paths[activeIdx + 1];
+                        const isNgetem = (currentMs >= nodeA.arriv_ms && currentMs <= nodeA.depart_ms);
+
+                        processedLiveTrains.push({
+                            id: train.tr_id || train.id || Math.random().toString(),
+                            name: train.tr_name || train.name || "KA Ghaib",
+                            tr_cd: train.tr_cd || "CC",
+                            status: isNgetem ? "NGETEM" : "BERJALAN",
+                            relation: train.relation || "LINTAS DAOP",
+                            isNgetem: isNgetem,
+                            t_start: isNgetem ? nodeA.arriv_ms : nodeA.depart_ms,
+                            t_end: isNgetem ? nodeA.depart_ms : nodeB.arriv_ms,
+                            lat_a: nodeA.lat || 0,
+                            lng_a: nodeA.lng || 0,
+                            lat_b: isNgetem ? nodeA.lat : nodeB.lat || 0,
+                            lng_b: isNgetem ? nodeA.lng : nodeB.lng || 0
+                        });
                     }
                 }
-
-                if (activeIdx !== -1) {
-                    const nodeA = paths[activeIdx];
-                    const nodeB = paths[activeIdx + 1];
-                    const isNgetem = (currentMs >= nodeA.arriv_ms && currentMs <= nodeA.depart_ms);
-
-                    processedLiveTrains.push({
-                        id: train.tr_id || train.id || Math.random().toString(),
-                        name: train.tr_name || train.name || "KA Ghaib",
-                        tr_cd: train.tr_cd || "CC",
-                        status: isNgetem ? "NGETEM" : "BERJALAN",
-                        relation: train.relation || "LINTAS DAOP",
-                        isNgetem: isNgetem,
-                        t_start: isNgetem ? nodeA.arriv_ms : nodeA.depart_ms,
-                        t_end: isNgetem ? nodeA.depart_ms : nodeB.arriv_ms,
-                        lat_a: nodeA.lat || 0,
-                        lng_a: nodeA.lng || 0,
-                        lat_b: isNgetem ? nodeA.lat : nodeB.lat || 0,
-                        lng_b: isNgetem ? nodeA.lng : nodeB.lng || 0
-                    });
-                }
+            } catch (e) {
+                // Skip data corupt per gerbong kereta
             }
-        } catch (e) {
-            // Kalo ada 1 baris data kereta corupt, skip gaeess, jangan bikin mati se-Indonesia!
-            console.error("Ada kereta eror, skip gaeess:", e);
-        }
-    });
+        });
 
         res.setHeader('Access-Control-Allow-Origin', '*');
         res.setHeader('Content-Type', 'application/json');
