@@ -1,0 +1,12 @@
+{
+  "name": "pusdalop-engine-reborn",
+  "version": "4.5.0",
+  "description": "Hybrid Serverless Train Radar Cloud Architecture",
+  "main": "api/get-live.js",
+  "dependencies": {
+    "mongodb": "^6.3.0"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
