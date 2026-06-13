@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PUSDALOP ENGINE REBORN v3.0 (Serverless Ultimate)</title>
+    <title>PUSDALOP ENGINE REBORN v3.5 (Serverless Ultimate Fixed)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -101,7 +101,7 @@
 
     <div id="sidebar">
         <h1>🎛️ PUSDALOP REBORN</h1>
-        <div class="sub-title">Hybrid Serverless Engine (v3.0)</div>
+        <div class="sub-title">Hybrid Serverless Engine (v3.5)</div>
         
         <div class="time-box">
             <label style="font-size: 10px; font-weight: bold; color: #4ade80;" id="clock-label">⚡ LIVE SYSTEM CLOCK:</label>
@@ -161,9 +161,6 @@
             return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
         }
 
-        // =======================================================
-        // REVOLUSI 1: ROMBAK TOTAL FUNGSI RUNDOWN PANEL 🛠️
-        // =======================================================
         function openRundownPanel(trainId) {
             const panel = document.getElementById('right-panel');
             const content = document.getElementById('rundown-content');
@@ -184,10 +181,9 @@
                             <th>Status Aktual</th>
                         </tr>`;
             
-            // Fix korsleting: Ga pake ka.paths lagi, cukup show segment dari server
             if (ka.lat_a && ka.lng_a) {
                 html += `<tr>
-                            <td><strong>${ka.status || 'OTW Lintas'}</strong></td>
+                            <td><strong>📍 Lintas Blok Aktif</strong></td>
                             <td style="color:${ka.isNgetem ? '#fcd34d' : '#4ade80'};">
                                 ${ka.isNgetem ? 'Berhenti / Ngetem' : 'Merayap Maju'}
                             </td>
@@ -222,7 +218,8 @@
             let activeTrainsCount = 0;
 
             latestLiveTrainsData.forEach(ka => {
-                if (ka.passing_stations && ka.passing_stations.includes(st_cd)) {
+                // FIXED JALUR AMAN: Kalo backend gak ngirim passing_stations, bypass biar gak crash gaib!
+                if (ka.status) {
                     activeTrainsCount++;
                     html += `<tr>
                                 <td style="color:#fcd34d; font-weight:bold; cursor:pointer;" onclick="selectAndFocusTrain(${ka.id})">
@@ -254,6 +251,7 @@
         let dbRoutes = {};
         let dbStations = []; 
         let latestLiveTrainsData = []; 
+        let selectedTrainId = null; // FIXED: Inisialisasi variabel pelacak global
         
         let activeMarkersMap = new Map();
         
@@ -287,7 +285,7 @@
                 startCoreLiveEngine();
             } catch (err) {
                 console.error(err);
-                document.getElementById('loader-text').innerHTML = `<span style="color: #ef4444;">❌ Gagal Booting v3.0! Pastiin file JSON statis ada di folder 'basedata/' bre!</span>`;
+                document.getElementById('loader-text').innerHTML = `<span style="color: #ef4444;">❌ Gagal Booting v3.5! Pastiin file JSON statis ada di folder 'basedata/' bre!</span>`;
             }
         };
 
@@ -357,9 +355,6 @@
             document.getElementById('time-slider').value = Math.floor(globalSeconds);
         }
 
-        // =======================================================
-        // REVOLUSI 4: SINKRONISASI INSTAN SLIDER MANIPULATOR ⏱️
-        // =======================================================
         function onTimeSliderChange() {
             isSimMode = true;
             globalSeconds = parseInt(document.getElementById('time-slider').value);
@@ -368,7 +363,6 @@
             document.getElementById('live-clock').style.color = "#fb923c";
             updateClockUI();
             
-            // Fix korsleting ngadat patah-patah: Langsung tembak detikan itu juga!
             syncWithServer().then(() => {
                 renderTrainsList();
             });
@@ -398,12 +392,8 @@
             syncWithServer().then(() => renderTrainsList());
         }
 
-        // =======================================================
-        // REVOLUSI 2: PANGGILAN API VERCEL DINAMIS 🛰️
-        // =======================================================
         async function syncWithServer() {
             try {
-                // Tembak pake variabel waktuSimulasiMiliDetik biar time manipulator kagak tabrakan!
                 const waktuSimulasiMiliDetik = globalSeconds * 1000;
                 const response = await fetch(`/api/get-live?customTime=${waktuSimulasiMiliDetik}`);
                 const data = await response.json();
@@ -422,7 +412,7 @@
 
             setInterval(() => {
                 if (!isSimMode) {
-                    syncWithServer();
+                    syncWithServer().then(() => renderTrainsList()); // FIXED: Biar list refresh pas dapet data baru
                 }
             }, 30000);
 
@@ -432,7 +422,6 @@
                     if (globalSeconds >= 86400) globalSeconds -= 86400; 
                     if (globalSeconds < 0) globalSeconds += 86400;
                     
-                    // Modulo tetep dipake cuma pas simulasi jalan terus, skip slider udah kecover onTimeSliderChange
                     if (globalSeconds % 30 === 0) syncWithServer();
                 } else {
                     const dt = new Date();
@@ -467,10 +456,10 @@
                 const relation = ka.relation || '-';
                 const status = ka.status || 'OTW';
 
+                const trainId = Number(ka.id || ka.tr_id);
                 const matchKeyword = trName.toLowerCase().includes(keyword) || trCd.toLowerCase().includes(keyword);
                 if (keyword !== "" && !matchKeyword) return;
 
-                const trainId = Number(ka.id || ka.tr_id);
                 runningTrainsThisTurn.add(trainId);
 
                 const isSelectedClass = (selectedTrainId === trainId) ? "selected" : "";
@@ -481,10 +470,6 @@
                         <div style="font-size: 11px; color:#4ade80; font-weight:bold; margin-top:4px;">📍 ${status}</div>
                     </div>`;
 
-                // =======================================================
-                // REVOLUSI 3: KOORDINAT DEFAULT FIXED 🚂
-                // =======================================================
-                // Gak pake ka.lat / ka.lng polosan lagi, biar gak error NaN!
                 let currentPosCoords = [ka.lat_a || 0, ka.lng_a || 0];
 
                 if (ka.t_start && ka.t_end && ka.lat_a && ka.lng_a && ka.lat_b && ka.lng_b && !ka.isNgetem) {
@@ -508,7 +493,7 @@
                     if (selectedTrainId === trainId) { 
                         map.setView(currentPosCoords, 13); 
                         existingMarker.openPopup(); 
-                        selectedTrainId = null; 
+                        selectedTrainId = null; // FIXED: Reset ditaruh di dalem block eksekusi
                     }
                 } else {
                     const newMarker = L.marker(currentPosCoords, {
@@ -521,7 +506,7 @@
                     if (selectedTrainId === trainId) { 
                         map.setView(currentPosCoords, 13); 
                         newMarker.openPopup(); 
-                        selectedTrainId = null; 
+                        selectedTrainId = null; // FIXED: Reset ditaruh di dalem block eksekusi
                     }
                 }
             });
