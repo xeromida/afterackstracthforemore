@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PUSDALOP ENGINE REBORN v1.0</title>
+    <title>PUSDALOP ENGINE REBORN v2.5 (Hybrid Serverless)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -96,12 +96,12 @@
 
     <div id="loader">
         <div class="spinner"></div>
-        <div id="loader-text">Menghubungkan Sumbu Utama Master Data v1.0...</div>
+        <div id="loader-text">Sinkronisasi Jaringan Statis...</div>
     </div>
 
     <div id="sidebar">
         <h1>🎛️ PUSDALOP REBORN</h1>
-        <div class="sub-title">Live Realtime Engine Sync (v1.0 Build)</div>
+        <div class="sub-title">Hybrid Serverless Engine (v2.5)</div>
         
         <div class="time-box">
             <label style="font-size: 10px; font-weight: bold; color: #4ade80;" id="clock-label">⚡ LIVE SYSTEM CLOCK:</label>
@@ -130,7 +130,7 @@
         <div>
             <h3 style="font-size: 12px; color: #f97316; margin-bottom: 8px;">🚂 DAFTAR UNIT LIVE DI LINTASAN:</h3>
             <div id="train-list-container" style="display: flex; flex-direction: column; gap: 8px;">
-                <span style="color: #64748b; font-size: 12px;">Membuka manifes radar...</span>
+                <span style="color: #64748b; font-size: 12px;">Menghubungkan ke API Vercel...</span>
             </div>
         </div>
     </div>
@@ -161,9 +161,6 @@
             return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
         }
 
-        // =======================================================
-        // KAMUS STASIUN 
-        // =======================================================
         const stationDict = {
             "GMR": "Gambir", "BKS": "Bekasi", "PSE": "Pasar Senen", "JAKK": "Jakarta Kota",
             "JNG": "Jatinegara", "MRI": "Manggarai", "TBH": "Tambun", "CKR": "Cikarang",
@@ -176,19 +173,17 @@
             let name = st_name || stationDict[st_cd] || "Stasiun";
             return `${name} (${st_cd})`;
         }
-        // =======================================================
 
         function openRundownPanel(trainId) {
             const panel = document.getElementById('right-panel');
             const content = document.getElementById('rundown-content');
             
-            const ka = dbTrains.find(t => Number(t.tr_id) === trainId);
+            const ka = latestLiveTrainsData.find(t => Number(t.id) === trainId);
             if (!ka) return;
 
-            let html = `<h2 style="color:#4ade80; font-size:18px; margin-top:10px;">🚂 ${ka.tr_name} [${ka.tr_cd}]</h2>`;
-            html += `<p style="font-size:12px; color:#94a3b8; margin-bottom:10px;">Relasi: ${ka.relation}</p>`;
+            let html = `<h2 style="color:#4ade80; font-size:18px; margin-top:10px;">🚂 ${ka.name} [${ka.tr_cd || '-'}]</h2>`;
+            html += `<p style="font-size:12px; color:#94a3b8; margin-bottom:10px;">Relasi: ${ka.relation || '-'}</p>`;
             
-            // UPDATE: TEKS DISCLAIMER AKURASI ASLI GEN Z 🥀
             html += `<div style="background: #1c1917; border: 1px dashed #ef4444; padding: 10px; border-radius: 6px; font-size: 11px; color: #fca5a5; margin-bottom: 12px; line-height: 1.4;">
                         ⚠️ <b>DISCLAIMER:</b> Jangan nelan mentah-mentah data di mari gais, <i>literally</i> ini cuma perhitungan kasar radar engine 💀. Mending buruan cek aplikasi resmi KAI langsung biar valid! 🤓
                      </div>`;
@@ -202,30 +197,16 @@
                         </tr>`;
             
             if (ka.paths && ka.paths.length > 0) {
-                for (let i = 0; i < ka.paths.length; i++) {
-                    let st = ka.paths[i];
-                    
-                    let tiba = st.arriv_ms ? formatMsToTime(st.arriv_ms) : '-';
-                    let brgkt = st.depart_ms ? formatMsToTime(st.depart_ms) : '-';
-                    
-                    let distStr = '🏁 Akhir';
-                    if (i < ka.paths.length - 1) {
-                        let nextSt = ka.paths[i+1];
-                        let point1 = L.latLng(st.lat, st.lng);
-                        let point2 = L.latLng(nextSt.lat, nextSt.lng);
-                        let distKm = (point1.distanceTo(point2) / 1000).toFixed(2);
-                        distStr = `~${distKm} km`;
-                    }
-                    
+                ka.paths.forEach((st) => {
                     html += `<tr>
                                 <td><strong>${getFullStationName(st.st_cd, st.st_name)}</strong></td>
-                                <td style="color:#fcd34d;">${tiba}</td>
-                                <td style="color:#4ade80;">${brgkt}</td>
-                                <td style="color:#94a3b8;">${distStr}</td>
+                                <td style="color:#fcd34d;">${st.arriv_time || '-'}</td>
+                                <td style="color:#4ade80;">${st.depart_time || '-'}</td>
+                                <td style="color:#94a3b8;">${st.distStr || '🏁 Akhir'}</td>
                              </tr>`;
-                }
+                });
             } else {
-                html += `<tr><td colspan="4" style="text-align:center;">Data lintasan nggak ketemu bre.</td></tr>`;
+                html += `<tr><td colspan=\"4\" style=\"text-align:center;\">Data lintasan udah dihandle Backend, cek detail langsung di Vercel bre.</td></tr>`;
             }
             
             html += `</table>`;
@@ -233,9 +214,6 @@
             panel.classList.add('open');
         }
 
-        // =======================================================
-        // MENU PANEL STASIUN (SHOW AKTIF KA)
-        // =======================================================
         function openStationPanel(st_cd, st_name) {
             const panel = document.getElementById('right-panel');
             const content = document.getElementById('rundown-content');
@@ -243,7 +221,6 @@
             let html = `<h2 style="color:#38bdf8; font-size:18px; margin-top:10px;">🚉 ${st_name} [${st_cd}]</h2>`;
             html += `<p style="font-size:12px; color:#94a3b8; margin-bottom:10px;">Daftar KA Aktif di Lintas Stasiun Ini</p>`;
             
-            // UPDATE: TEKS DISCLAIMER JADWAL STASIUN AKURASI ASLI GEN Z 🥀
             html += `<div style="background: #1c1917; border: 1px dashed #ef4444; padding: 10px; border-radius: 6px; font-size: 11px; color: #fca5a5; margin-bottom: 12px; line-height: 1.4;">
                         ⚠️ <b>DISCLAIMER:</b> Jangan nelan mentah-mentah data di mari gais, <i>literally</i> ini cuma perhitungan kasar radar engine 💀. Mending buruan cek aplikasi resmi KAI langsung biar valid! 🤓
                      </div>`;
@@ -255,27 +232,18 @@
                             <th>Status Aktual</th>
                         </tr>`;
             
-            const currentMs = globalSeconds * 1000;
             let activeTrainsCount = 0;
 
-            dbTrains.forEach(ka => {
-                const seg = getLiveActiveSegment(ka, currentMs);
-                if (seg) { 
-                    const isPassingHere = ka.paths.some(p => p.st_cd === st_cd);
-                    if (isPassingHere) {
-                        activeTrainsCount++;
-                        let statusStr = seg.isNgetem ? 
-                            `Ngetem di ${getFullStationName(seg.stA.st_cd, seg.stA.st_name)}` : 
-                            `OTW ${getFullStationName(seg.stB.st_cd, seg.stB.st_name)}`;
-                            
-                        html += `<tr>
-                                    <td style="color:#fcd34d; font-weight:bold; cursor:pointer;" onclick="selectAndFocusTrain(${ka.tr_id})">
-                                        ${ka.tr_name}<br><span style="font-size:10px; color:#94a3b8;">[${ka.tr_cd}]</span>
-                                    </td>
-                                    <td>${ka.relation}</td>
-                                    <td style="color:#4ade80;">${statusStr}</td>
-                                 </tr>`;
-                    }
+            latestLiveTrainsData.forEach(ka => {
+                if (ka.passing_stations && ka.passing_stations.includes(st_cd)) {
+                    activeTrainsCount++;
+                    html += `<tr>
+                                <td style="color:#fcd34d; font-weight:bold; cursor:pointer;" onclick="selectAndFocusTrain(${ka.id})">
+                                    ${ka.name}<br><span style="font-size:10px; color:#94a3b8;">[${ka.tr_cd || '-'}]</span>
+                                </td>
+                                <td>${ka.relation || '-'}</td>
+                                <td style="color:#4ade80;">${ka.status}</td>
+                             </tr>`;
                 }
             });
 
@@ -296,13 +264,11 @@
         const map = L.map('map', { preferCanvas: true }).setView([-6.2146, 106.8451], 10);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; CARTO' }).addTo(map);
 
-        let dbTrains = [];
         let dbRoutes = {};
         let dbStations = []; 
+        let latestLiveTrainsData = []; 
         
         let activeMarkersMap = new Map();
-        let activePolylinesMap = new Map();
-        let selectedTrainId = null;
         
         let globalSeconds = 0;
         let isSimMode = false;
@@ -317,33 +283,27 @@
             try {
                 const loaderText = document.getElementById('loader-text');
                 
-                loaderText.innerText = "⏳ Membaca database stasiun basedata/stations.json...";
-                const resStations = await fetch('basedata/stations.json');
+                loaderText.innerText = "⏳ Membaca data infrastruktur stasiun...";
+                const resStations = await fetch('database/stations.json');
                 const stationsData = await resStations.json();
                 dbStations = stationsData.data || stationsData; 
 
-                loaderText.innerText = "⏳ Membaca database dinamis basedata/trains.json...";
-                const resTrains = await fetch('basedata/trains.json');
-                const trainsData = await resTrains.json();
-                dbTrains = trainsData.data || trainsData;
-
-                loaderText.innerText = "⏳ Memetakan geometri rel basedata/routes.json...";
-                const resRoutes = await fetch('basedata/routes.json');
+                loaderText.innerText = "⏳ Membaca geometri jaringan rel...";
+                const resRoutes = await fetch('database/routes.json');
                 const routesData = await resRoutes.json();
                 dbRoutes = routesData.data || routesData;
 
                 renderStationMarkers(); 
-                renderStaticRoutes(); // UPDATE: PEMETAAN WARNA JALUR REL JARINGAN SE-INDONESIA 🗺️
+                renderStaticRoutes();
 
                 document.getElementById('loader').style.display = 'none';
                 startCoreLiveEngine();
             } catch (err) {
                 console.error(err);
-                document.getElementById('loader-text').innerHTML = `<span style="color: #ef4444;">❌ Gagal Booting v1.0! Pastiin folder 'basedata/' lengkap (trains, routes, stations) di Laragon lo, bre!</span>`;
+                document.getElementById('loader-text').innerHTML = `<span style="color: #ef4444;">❌ Gagal Booting v2.5! Pastiin file JSON statis ada di folder 'database/' bre!</span>`;
             }
         };
 
-        // Fungsi Render Titik Stasiun
         function renderStationMarkers() {
             dbStations.forEach(st => {
                 if (st.latitude && st.longitude) {
@@ -364,69 +324,31 @@
             });
         }
 
-        // =======================================================
-        // UPDATE BARU: ENGINE MAPPER WARNA JALUR REL PER KATEGORI
-        // =======================================================
         function renderStaticRoutes() {
-            let routeTypesMap = {};
+            Object.keys(dbRoutes).forEach(routeId => {
+                let rData = dbRoutes[routeId];
+                let rCode = (rData.code || '').toLowerCase();
+                let startSt = (rData.start_st || '').toLowerCase();
+                let endSt = (rData.end_st || '').toLowerCase();
 
-            // Deteksi network type otomatis dari manifes kereta
-            dbTrains.forEach(ka => {
                 let type = 'regular';
-                let trType = (ka.tr_type || '').toLowerCase();
-                let trName = (ka.tr_name || '').toLowerCase();
-                let trCd = (ka.tr_cd || '').toLowerCase();
-
-                if (trType.includes('whoosh') || trName.includes('whoosh') || trCd.startsWith('g')) {
+                if (rCode.includes('whoosh') || startSt.includes('kc') || endSt.includes('kc')) {
                     type = 'whoosh';
-                } else if (trType.includes('mrt') || trName.includes('mrt') || trCd.startsWith('m-')) {
+                } else if (rCode.includes('mrt') || startSt.startsWith('m-') || endSt.startsWith('m-')) {
                     type = 'mrt';
-                } else if (trType.includes('lrt') || trName.includes('lrt') || trCd.startsWith('l-')) {
+                } else if (rCode.includes('lrt') || startSt.startsWith('l-') || endSt.startsWith('l-') || rCode.includes('lrt')) {
                     type = 'lrt';
                 }
 
-                if (ka.paths) {
-                    ka.paths.forEach(p => {
-                        if (p.route_id) {
-                            routeTypesMap[p.route_id] = type;
-                        }
-                    });
-                }
-            });
-
-            // Mulai render garis permanen di peta sesuai rules warna pesanan lu
-            Object.keys(dbRoutes).forEach(routeId => {
-                let type = routeTypesMap[routeId];
-
-                // Heuristic fallback deteksi string jika tidak dilewati armada dinas aktif saat itu
-                if (!type) {
-                    let rData = dbRoutes[routeId];
-                    let rCode = (rData.code || '').toLowerCase();
-                    let startSt = (rData.start_st || '').toLowerCase();
-                    let endSt = (rData.end_st || '').toLowerCase();
-
-                    if (rCode.includes('whoosh') || startSt.includes('kc') || endSt.includes('kc')) {
-                        type = 'whoosh';
-                    } else if (rCode.includes('mrt') || startSt.startsWith('m-') || endSt.startsWith('m-')) {
-                        type = 'mrt';
-                    } else if (rCode.includes('lrt') || startSt.startsWith('l-') || endSt.startsWith('l-') || rCode.includes('lrt')) {
-                        type = 'lrt';
-                    } else {
-                        type = 'regular';
-                    }
-                }
-
-                // Palet Pewarnaan Jalur PUSDALOP
-                let polyColor = '#3b82f6'; // Kereta Biasa / KRL = Biru 🔵
-                if (type === 'whoosh') polyColor = '#ef4444'; // Whoosh = Merah 🔴
-                if (type === 'mrt') polyColor = '#22c55e';    // MRT = Hijau 🟢
-                if (type === 'lrt') polyColor = '#f97316';    // LRT = Oranye 🟠
+                let polyColor = '#3b82f6'; 
+                if (type === 'whoosh') polyColor = '#ef4444'; 
+                if (type === 'mrt') polyColor = '#22c55e';    
+                if (type === 'lrt') polyColor = '#f97316';    
 
                 if (dbRoutes[routeId] && dbRoutes[routeId].geometry) {
                     const routeGeom = dbRoutes[routeId].geometry;
                     let polyCoords = routeGeom.map(pt => [pt[1], pt[0]]);
                     
-                    // Digambar tipis-elegan biar gak numpuk kontras sama lari loko realtime
                     L.polyline(polyCoords, { 
                         color: polyColor, 
                         weight: 2.5, 
@@ -455,7 +377,9 @@
             document.getElementById('clock-label').style.color = "#fb923c";
             document.getElementById('live-clock').style.color = "#fb923c";
             updateClockUI();
-            executeRadarTickEngine();
+            
+            syncWithServer(); 
+            renderTrainsList();
         }
 
         function changeSpeed() {
@@ -479,7 +403,22 @@
             const d = new Date();
             globalSeconds = (d.getHours() * 3600) + (d.getMinutes() * 60) + d.getSeconds();
             updateClockUI();
-            executeRadarTickEngine();
+            syncWithServer();
+        }
+
+        // =======================================================
+        // TAKTIK HYBRID ENGINE ⚡ (FETCHER & ANIMATOR)
+        // =======================================================
+        async function syncWithServer() {
+            try {
+                // Endpoint ditembak irit sesuai interval pake customTime milidetik murni!
+                const waktuSimulasiMiliDetik = globalSeconds * 1000;
+                const response = await fetch(`/api/get-live?customTime=${waktuSimulasiMiliDetik}`);
+                const data = await response.json();
+                latestLiveTrainsData = data.activeTrains || data; 
+            } catch (err) {
+                console.error("Gagal nyambung Vercel bre!", err);
+            }
         }
 
         function startCoreLiveEngine() {
@@ -487,165 +426,125 @@
             globalSeconds = (d.getHours() * 3600) + (d.getMinutes() * 60) + d.getSeconds();
             updateClockUI();
 
+            // Tarikan gigi 1 pas baru buka web
+            syncWithServer();
+
+            // INTERVAL 1: FETCH DATA KE VERCEL (TIAP 30 DETIK AJA) 🛡️ 
+            setInterval(() => {
+                if (!isSimMode) {
+                    syncWithServer();
+                }
+            }, 30000);
+
+            // INTERVAL 2: RENDER UI & ANIMASI MARKER LOKO (TIAP 1 DETIK) 🚀
             setInterval(() => {
                 if (isSimMode) {
                     globalSeconds += timeMultiplier;
                     if (globalSeconds >= 86400) globalSeconds -= 86400; 
                     if (globalSeconds < 0) globalSeconds += 86400;
-                    updateClockUI();
+                    
+                    // Kalo lu lagi iseng simulasi dicepetin, fetch data maya tiap 30 detik *ingame*
+                    if (globalSeconds % 30 === 0) syncWithServer();
                 } else {
                     const dt = new Date();
                     globalSeconds = (dt.getHours() * 3600) + (dt.getMinutes() * 60) + dt.getSeconds();
-                    updateClockUI();
                 }
-                executeRadarTickEngine();
-            }, 1000);
+                updateClockUI();
+                renderTrainsList(); 
+            }, 1000); 
         }
 
-        function getLiveActiveSegment(ka, currentMs) {
-            if (!ka.paths || ka.paths.length < 2) return null;
-
-            let departAwal = Number(ka.depart_ms || ka.paths[0].depart_ms || 0);
-            let tibaAkhir = Number(ka.arriv_ms || ka.paths[ka.paths.length - 1].arriv_ms || 0);
-
-            let loopMs = currentMs;
-            let isOvernight = ka.is_overnight || (tibaAkhir < departAwal);
-
-            if (isOvernight) {
-                if (currentMs < tibaAkhir) loopMs += 86400000;
-                tibaAkhir += 86400000;
-            }
-
-            if (loopMs < departAwal || loopMs > tibaAkhir) return null;
-
-            for (let i = 0; i < ka.paths.length; i++) {
-                let arr = Number(ka.paths[i].arriv_ms || ka.paths[i].depart_ms || 0);
-                let dep = Number(ka.paths[i].depart_ms || ka.paths[i].arriv_ms || 0);
-                
-                if (isOvernight) {
-                    if (arr < ka.depart_ms) arr += 86400000;
-                    if (dep < ka.depart_ms) dep += 86400000;
-                }
-
-                if (loopMs >= arr && loopMs <= dep) {
-                    return { isNgetem: true, stA: ka.paths[i], progressRatio: 0 };
-                }
-            }
-
-            for (let i = 0; i < ka.paths.length - 1; i++) {
-                let tStart = Number(ka.paths[i].depart_ms || ka.paths[i].arriv_ms || 0);
-                let tEnd = Number(ka.paths[i+1].arriv_ms || ka.paths[i+1].depart_ms || 0);
-
-                if (isOvernight) {
-                    if (tStart < ka.depart_ms) tStart += 86400000;
-                    if (tEnd < ka.depart_ms) tEnd += 86400000;
-                }
-
-                if (loopMs > tStart && loopMs < tEnd) {
-                    return { isNgetem: false, stA: ka.paths[i], stB: ka.paths[i+1], progressRatio: (loopMs - tStart) / (tEnd - tStart || 1) };
-                }
-            }
-            return null;
+        function filterActiveTrains() { 
+            renderTrainsList(); 
         }
-
-        function filterActiveTrains() { executeRadarTickEngine(); }
 
         function selectAndFocusTrain(id) {
             selectedTrainId = Number(id);
             if (window.innerWidth <= 768) { toggleSidebar(); }
             openRundownPanel(id);
-            executeRadarTickEngine();
+            renderTrainsList();
         }
 
-        function executeRadarTickEngine() {
+        function renderTrainsList() {
             const keyword = document.getElementById('search-input').value.toLowerCase().trim();
             const listContainer = document.getElementById('train-list-container');
             
-            const currentMs = globalSeconds * 1000;
             let runningTrainsThisTurn = new Set();
             let htmlListContent = "";
 
-            dbTrains.forEach(ka => {
-                const matchKeyword = ka.tr_name.toLowerCase().includes(keyword) || ka.tr_cd.toLowerCase().includes(keyword);
+            latestLiveTrainsData.forEach(ka => {
+                const trName = ka.name || ka.tr_name || '';
+                const trCd = ka.tr_cd || '';
+                const relation = ka.relation || '-';
+                const status = ka.status || 'OTW';
+
+                const matchKeyword = trName.toLowerCase().includes(keyword) || trCd.toLowerCase().includes(keyword);
                 if (keyword !== "" && !matchKeyword) return;
 
-                const seg = getLiveActiveSegment(ka, currentMs);
-                if (keyword === "" && !seg) return;
-
-                const trainId = Number(ka.tr_id);
+                const trainId = Number(ka.id || ka.tr_id);
                 runningTrainsThisTurn.add(trainId);
-
-                let inlineStatus = "Standby";
-                let currentPosCoords = null;
-
-                if (seg) {
-                    if (seg.isNgetem) {
-                        inlineStatus = `🛑 Ngetem di ${getFullStationName(seg.stA.st_cd, seg.stA.st_name)}`;
-                        currentPosCoords = [seg.stA.lat, seg.stA.lng];
-                    } else {
-                        inlineStatus = `⚡ OTW: ${getFullStationName(seg.stA.st_cd, seg.stA.st_name)} ➔ ${getFullStationName(seg.stB.st_cd, seg.stB.st_name)}`;
-                        const latA = seg.stA.lat; const lngA = seg.stA.lng;
-                        const latB = seg.stB.lat; const lngB = seg.stB.lng;
-                        currentPosCoords = [
-                            latA + (latB - latA) * seg.progressRatio,
-                            lngA + (lngB - lngA) * seg.progressRatio
-                        ];
-                    }
-                } else {
-                    currentPosCoords = [ka.paths[0].lat, ka.paths[0].lng];
-                    inlineStatus = `💤 Standby di ${getFullStationName(ka.start_st_cd, ka.start_st_name)}`;
-                }
 
                 const isSelectedClass = (selectedTrainId === trainId) ? "selected" : "";
                 htmlListContent += `
                     <div class="train-card ${isSelectedClass}" onclick="selectAndFocusTrain(${trainId})">
-                        <div class="train-name">${ka.tr_name} [${ka.tr_cd}]</div>
-                        <div style="color: #94a3b8; font-size: 11px; margin-top:2px;">Relasi: ${ka.relation}</div>
-                        <div style="font-size: 11px; color:#4ade80; font-weight:bold; margin-top:4px;">📍 ${inlineStatus}</div>
+                        <div class="train-name">${trName} [${trCd}]</div>
+                        <div style="color: #94a3b8; font-size: 11px; margin-top:2px;">Relasi: ${relation}</div>
+                        <div style="font-size: 11px; color:#4ade80; font-weight:bold; margin-top:4px;">📍 ${status}</div>
                     </div>`;
 
-                if (currentPosCoords) {
-                    if (activeMarkersMap.has(trainId)) {
-                        const existingMarker = activeMarkersMap.get(trainId);
-                        existingMarker.setLatLng(currentPosCoords);
-                        existingMarker.off('click').on('click', () => { selectAndFocusTrain(trainId); });
-                        existingMarker.getPopup().setContent(`<b>${ka.tr_name} (${ka.tr_cd})</b><br>${inlineStatus}<br>Relasi: ${ka.relation}`);
-                        
-                        if (selectedTrainId === trainId) { 
-                            map.setView(currentPosCoords, 13); 
-                            existingMarker.openPopup(); 
-                            selectedTrainId = null; 
-                        }
-                    } else {
-                        const newMarker = L.marker(currentPosCoords, {
-                            icon: L.divIcon({ html: `<div style="font-size:24px; transform:translate(-10px,-10px); filter:drop-shadow(0 0 5px #f97316); cursor:pointer;">🚂</div>`, className: 'node-loko' })
-                        }).addTo(map).bindPopup(`<b>${ka.tr_name} (${ka.tr_cd})</b><br>${inlineStatus}<br>Relasi: ${ka.relation}`);
-                        
-                        newMarker.on('click', () => { selectAndFocusTrain(trainId); });
-                        activeMarkersMap.set(trainId, newMarker);
-                        
-                        if (selectedTrainId === trainId) { 
-                            map.setView(currentPosCoords, 13); 
-                            newMarker.openPopup(); 
-                            selectedTrainId = null; 
-                        }
-                    }
+                // Set default posisi hasil narik dari Vercel
+                let currentPosCoords = [ka.lat, ka.lng];
 
-                    if (seg && !seg.isNgetem && seg.stB && seg.stB.route_id && dbRoutes[seg.stB.route_id]) {
-                        if (!activePolylinesMap.has(trainId)) {
-                            const routeGeom = dbRoutes[seg.stB.route_id].geometry;
-                            let polyCoords = routeGeom.map(pt => [pt[1], pt[0]]);
-                            const polyline = L.polyline(polyCoords, { color: '#f97316', weight: 3, opacity: 0.5 }).addTo(map);
-                            activePolylinesMap.set(trainId, polyline);
-                        }
+                // TAKTIK HYBRID: Kalkulasi rasio tipis murni di browser buat animasi merayap!
+                if (ka.t_start && ka.t_end && ka.lat_a && ka.lng_a && ka.lat_b && ka.lng_b && !ka.isNgetem) {
+                    const currentMs = globalSeconds * 1000;
+                    if (currentMs >= ka.t_start && currentMs <= ka.t_end) {
+                        const duration = ka.t_end - ka.t_start;
+                        const progress = (currentMs - ka.t_start) / (duration || 1);
+                        
+                        // Interpolasi linear jarak dari titik A ke titik B biar geraknya gak patah-patah
+                        const animLat = ka.lat_a + (ka.lat_b - ka.lat_a) * progress;
+                        const animLng = ka.lng_a + (ka.lng_b - ka.lng_a) * progress;
+                        currentPosCoords = [animLat, animLng];
+                    }
+                }
+
+                if (activeMarkersMap.has(trainId)) {
+                    const existingMarker = activeMarkersMap.get(trainId);
+                    existingMarker.setLatLng(currentPosCoords); 
+                    existingMarker.off('click').on('click', () => { selectAndFocusTrain(trainId); });
+                    existingMarker.getPopup().setContent(`<b>${trName} (${trCd})</b><br>${status}<br>Relasi: ${relation}`);
+                    
+                    if (selectedTrainId === trainId) { 
+                        map.setView(currentPosCoords, 13); 
+                        existingMarker.openPopup(); 
+                        selectedTrainId = null; 
+                    }
+                } else {
+                    const newMarker = L.marker(currentPosCoords, {
+                        icon: L.divIcon({ html: `<div style="font-size:24px; transform:translate(-10px,-10px); filter:drop-shadow(0 0 5px #f97316); cursor:pointer;">🚂</div>`, className: 'node-loko' })
+                    }).addTo(map).bindPopup(`<b>${trName} (${trCd})</b><br>${status}<br>Relasi: ${relation}`);
+                    
+                    newMarker.on('click', () => { selectAndFocusTrain(trainId); });
+                    activeMarkersMap.set(trainId, newMarker);
+                    
+                    if (selectedTrainId === trainId) { 
+                        map.setView(currentPosCoords, 13); 
+                        newMarker.openPopup(); 
+                        selectedTrainId = null; 
                     }
                 }
             });
 
             listContainer.innerHTML = htmlListContent === "" ? `<span style="color:#64748b; font-size:12px;">Kagak ada armada premium aktif di menit lintas ini, gaeess. 🥀</span>` : htmlListContent;
 
-            activeMarkersMap.forEach((marker, id) => { if (!runningTrainsThisTurn.has(id)) { map.removeLayer(marker); activeMarkersMap.delete(id); } });
-            activePolylinesMap.forEach((poly, id) => { if (!runningTrainsThisTurn.has(id)) { map.removeLayer(poly); activePolylinesMap.delete(id); } });
+            // Bersih-bersih sampah di map kalo keretanya udah kelar dinas
+            activeMarkersMap.forEach((marker, id) => { 
+                if (!runningTrainsThisTurn.has(id)) { 
+                    map.removeLayer(marker); 
+                    activeMarkersMap.delete(id); 
+                } 
+            });
         }
     </script>
 </body>
