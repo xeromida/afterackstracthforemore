@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PUSDALOP ENGINE REBORN v2.5 (Hybrid Serverless)</title>
+    <title>PUSDALOP ENGINE REBORN v3.0 (Serverless Ultimate)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -101,7 +101,7 @@
 
     <div id="sidebar">
         <h1>🎛️ PUSDALOP REBORN</h1>
-        <div class="sub-title">Hybrid Serverless Engine (v2.5)</div>
+        <div class="sub-title">Hybrid Serverless Engine (v3.0)</div>
         
         <div class="time-box">
             <label style="font-size: 10px; font-weight: bold; color: #4ade80;" id="clock-label">⚡ LIVE SYSTEM CLOCK:</label>
@@ -161,19 +161,9 @@
             return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
         }
 
-        const stationDict = {
-            "GMR": "Gambir", "BKS": "Bekasi", "PSE": "Pasar Senen", "JAKK": "Jakarta Kota",
-            "JNG": "Jatinegara", "MRI": "Manggarai", "TBH": "Tambun", "CKR": "Cikarang",
-            "BD": "Bandung", "YK": "Yogyakarta", "SGU": "Surabaya Gubeng", "CN": "Cirebon",
-            "SMT": "Semarang Tawang", "SMC": "Semarang Poncol", "SLO": "Solo Balapan", 
-            "ML": "Malang", "PWT": "Purwokerto", "KTA": "Kutoarjo", "THB": "Tanah Abang"
-        };
-
-        function getFullStationName(st_cd, st_name) {
-            let name = st_name || stationDict[st_cd] || "Stasiun";
-            return `${name} (${st_cd})`;
-        }
-
+        // =======================================================
+        // REVOLUSI 1: ROMBAK TOTAL FUNGSI RUNDOWN PANEL 🛠️
+        // =======================================================
         function openRundownPanel(trainId) {
             const panel = document.getElementById('right-panel');
             const content = document.getElementById('rundown-content');
@@ -190,23 +180,20 @@
 
             html += `<table class="rundown-table">
                         <tr>
-                            <th>Stasiun</th>
-                            <th>Tiba</th>
-                            <th>Berangkat</th>
-                            <th>Jarak Next</th>
+                            <th>Segmen Perjalanan Aktual</th>
+                            <th>Status Aktual</th>
                         </tr>`;
             
-            if (ka.paths && ka.paths.length > 0) {
-                ka.paths.forEach((st) => {
-                    html += `<tr>
-                                <td><strong>${getFullStationName(st.st_cd, st.st_name)}</strong></td>
-                                <td style="color:#fcd34d;">${st.arriv_time || '-'}</td>
-                                <td style="color:#4ade80;">${st.depart_time || '-'}</td>
-                                <td style="color:#94a3b8;">${st.distStr || '🏁 Akhir'}</td>
-                             </tr>`;
-                });
+            // Fix korsleting: Ga pake ka.paths lagi, cukup show segment dari server
+            if (ka.lat_a && ka.lng_a) {
+                html += `<tr>
+                            <td><strong>${ka.status || 'OTW Lintas'}</strong></td>
+                            <td style="color:${ka.isNgetem ? '#fcd34d' : '#4ade80'};">
+                                ${ka.isNgetem ? 'Berhenti / Ngetem' : 'Merayap Maju'}
+                            </td>
+                         </tr>`;
             } else {
-                html += `<tr><td colspan=\"4\" style=\"text-align:center;\">Data lintasan udah dihandle Backend, cek detail langsung di Vercel bre.</td></tr>`;
+                html += `<tr><td colspan="2" style="text-align:center;">Data lintasan udah diringkas Backend Vercel bre.</td></tr>`;
             }
             
             html += `</table>`;
@@ -283,7 +270,6 @@
             try {
                 const loaderText = document.getElementById('loader-text');
                 
-                // FIXED KOCAK: Path direktori udah bener ke basedata/ 😹
                 loaderText.innerText = "⏳ Membaca data infrastruktur stasiun...";
                 const resStations = await fetch('basedata/stations.json');
                 const stationsData = await resStations.json();
@@ -301,7 +287,7 @@
                 startCoreLiveEngine();
             } catch (err) {
                 console.error(err);
-                document.getElementById('loader-text').innerHTML = `<span style="color: #ef4444;">❌ Gagal Booting v2.5! Pastiin file JSON statis ada di folder 'basedata/' bre!</span>`;
+                document.getElementById('loader-text').innerHTML = `<span style="color: #ef4444;">❌ Gagal Booting v3.0! Pastiin file JSON statis ada di folder 'basedata/' bre!</span>`;
             }
         };
 
@@ -371,6 +357,9 @@
             document.getElementById('time-slider').value = Math.floor(globalSeconds);
         }
 
+        // =======================================================
+        // REVOLUSI 4: SINKRONISASI INSTAN SLIDER MANIPULATOR ⏱️
+        // =======================================================
         function onTimeSliderChange() {
             isSimMode = true;
             globalSeconds = parseInt(document.getElementById('time-slider').value);
@@ -379,8 +368,10 @@
             document.getElementById('live-clock').style.color = "#fb923c";
             updateClockUI();
             
-            syncWithServer(); 
-            renderTrainsList();
+            // Fix korsleting ngadat patah-patah: Langsung tembak detikan itu juga!
+            syncWithServer().then(() => {
+                renderTrainsList();
+            });
         }
 
         function changeSpeed() {
@@ -404,15 +395,15 @@
             const d = new Date();
             globalSeconds = (d.getHours() * 3600) + (d.getMinutes() * 60) + d.getSeconds();
             updateClockUI();
-            syncWithServer();
+            syncWithServer().then(() => renderTrainsList());
         }
 
         // =======================================================
-        // TAKTIK HYBRID ENGINE ⚡ (FETCHER & ANIMATOR)
+        // REVOLUSI 2: PANGGILAN API VERCEL DINAMIS 🛰️
         // =======================================================
         async function syncWithServer() {
             try {
-                // Endpoint ditembak irit sesuai interval pake customTime milidetik murni!
+                // Tembak pake variabel waktuSimulasiMiliDetik biar time manipulator kagak tabrakan!
                 const waktuSimulasiMiliDetik = globalSeconds * 1000;
                 const response = await fetch(`/api/get-live?customTime=${waktuSimulasiMiliDetik}`);
                 const data = await response.json();
@@ -427,24 +418,21 @@
             globalSeconds = (d.getHours() * 3600) + (d.getMinutes() * 60) + d.getSeconds();
             updateClockUI();
 
-            // Tarikan gigi 1 pas baru buka web
-            syncWithServer();
+            syncWithServer().then(() => renderTrainsList());
 
-            // INTERVAL 1: FETCH DATA KE VERCEL (TIAP 30 DETIK AJA) 🛡️ 
             setInterval(() => {
                 if (!isSimMode) {
                     syncWithServer();
                 }
             }, 30000);
 
-            // INTERVAL 2: RENDER UI & ANIMASI MARKER LOKO (TIAP 1 DETIK) 🚀
             setInterval(() => {
                 if (isSimMode) {
                     globalSeconds += timeMultiplier;
                     if (globalSeconds >= 86400) globalSeconds -= 86400; 
                     if (globalSeconds < 0) globalSeconds += 86400;
                     
-                    // Kalo lu lagi iseng simulasi dicepetin, fetch data maya tiap 30 detik *ingame*
+                    // Modulo tetep dipake cuma pas simulasi jalan terus, skip slider udah kecover onTimeSliderChange
                     if (globalSeconds % 30 === 0) syncWithServer();
                 } else {
                     const dt = new Date();
@@ -493,17 +481,18 @@
                         <div style="font-size: 11px; color:#4ade80; font-weight:bold; margin-top:4px;">📍 ${status}</div>
                     </div>`;
 
-                // Set default posisi hasil narik dari Vercel
-                let currentPosCoords = [ka.lat, ka.lng];
+                // =======================================================
+                // REVOLUSI 3: KOORDINAT DEFAULT FIXED 🚂
+                // =======================================================
+                // Gak pake ka.lat / ka.lng polosan lagi, biar gak error NaN!
+                let currentPosCoords = [ka.lat_a || 0, ka.lng_a || 0];
 
-                // TAKTIK HYBRID: Kalkulasi rasio tipis murni di browser buat animasi merayap!
                 if (ka.t_start && ka.t_end && ka.lat_a && ka.lng_a && ka.lat_b && ka.lng_b && !ka.isNgetem) {
                     const currentMs = globalSeconds * 1000;
                     if (currentMs >= ka.t_start && currentMs <= ka.t_end) {
                         const duration = ka.t_end - ka.t_start;
                         const progress = (currentMs - ka.t_start) / (duration || 1);
                         
-                        // Interpolasi linear jarak dari titik A ke titik B biar geraknya gak patah-patah
                         const animLat = ka.lat_a + (ka.lat_b - ka.lat_a) * progress;
                         const animLng = ka.lng_a + (ka.lng_b - ka.lng_a) * progress;
                         currentPosCoords = [animLat, animLng];
@@ -539,7 +528,6 @@
 
             listContainer.innerHTML = htmlListContent === "" ? `<span style="color:#64748b; font-size:12px;">Kagak ada armada premium aktif di menit lintas ini, gaeess. 🥀</span>` : htmlListContent;
 
-            // Bersih-bersih sampah di map kalo keretanya udah kelar dinas
             activeMarkersMap.forEach((marker, id) => { 
                 if (!runningTrainsThisTurn.has(id)) { 
                     map.removeLayer(marker); 
