@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PUSDALOP ENGINE REBORN v4.5 (Full MongoDB Automated)</title>
+    <title>PUSDALOP ENGINE REBORN v4.9 (Anti Type Crash Edition)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -101,7 +101,7 @@
 
     <div id="sidebar">
         <h1>🎛️ PUSDALOP REBORN</h1>
-        <div class="sub-title">MongoDB Automated Cloud Engine (v4.5)</div>
+        <div class="sub-title">MongoDB Automated Cloud Engine (v4.9)</div>
         
         <div class="time-box">
             <label style="font-size: 10px; font-weight: bold; color: #4ade80;" id="clock-label">⚡ LIVE SYSTEM CLOCK:</label>
@@ -158,7 +158,8 @@
             const panel = document.getElementById('right-panel');
             const content = document.getElementById('rundown-content');
             
-            const ka = latestLiveTrainsData.find(t => Number(t.id) === trainId);
+            // FIXED TIPE DATA: Pake toString() biar akurat nyari id ghaib Mongo
+            const ka = latestLiveTrainsData.find(t => t.id.toString() === trainId.toString());
             if (!ka) return;
 
             let html = `<h2 style="color:#4ade80; font-size:18px; margin-top:10px;">🚂 ${ka.name} [${ka.tr_cd || '-'}]</h2>`;
@@ -176,13 +177,13 @@
             
             if (ka.lat_a && ka.lng_a) {
                 html += `<tr>
-                            <td><strong>📍 Lintas Blok Aktif</strong></td>
+                            <td><strong>📍 Lintas Loko Aktif</strong></td>
                             <td style="color:${ka.isNgetem ? '#fcd34d' : '#4ade80'};">
                                 ${ka.isNgetem ? 'Berhenti / Ngetem' : 'Merayap Maju'}
                             </td>
                          </tr>`;
             } else {
-                html += `<tr><td colspan="2" style="text-align:center;">Data lintasan udah diringkas Backend Vercel bre.</td></tr>`;
+                html += `<tr><td colspan="2" style="text-align:center;">Data lintasan diringkas Backend cloud, bre.</td></tr>`;
             }
             
             html += `</table>`;
@@ -213,8 +214,9 @@
             latestLiveTrainsData.forEach(ka => {
                 if (ka.status) {
                     activeTrainsCount++;
+                    // FIXED TIPE DATA: Kirim string pake tanda kutip ghaib biar ga eror NaN
                     html += `<tr>
-                                <td style="color:#fcd34d; font-weight:bold; cursor:pointer;" onclick="selectAndFocusTrain(${ka.id})">
+                                <td style="color:#fcd34d; font-weight:bold; cursor:pointer;" onclick="selectAndFocusTrain('${ka.id}')">
                                     ${ka.name}<br><span style="font-size:10px; color:#94a3b8;">[${ka.tr_cd || '-'}]</span>
                                 </td>
                                 <td>${ka.relation || '-'}</td>
@@ -260,12 +262,11 @@
             try {
                 const loaderText = document.getElementById('loader-text');
                 
-                // FIXED BYPASS JALUR MONGO v4.5: Gak narik dari folder local 'basedata/' lagi gaeesss!
-                loaderText.innerText = "⏳ Menghubungkan database stasiun cloud MongoDB...";
+                loaderText.innerText = "⏳ Sinkronisasi data stasiun dari Cloud MongoDB...";
                 const resStations = await fetch('/api/get-live?type=stations');
                 dbStations = await resStations.json();
 
-                loaderText.innerText = "⏳ Sinkronisasi data rute geometri rel cloud MongoDB...";
+                loaderText.innerText = "⏳ Sinkronisasi rute rel dari Cloud MongoDB...";
                 const resRoutes = await fetch('/api/get-live?type=routes');
                 dbRoutes = await resRoutes.json();
 
@@ -276,7 +277,7 @@
                 startCoreLiveEngine();
             } catch (err) {
                 console.error(err);
-                document.getElementById('loader-text').innerHTML = `<span style="color: #ef4444;">❌ Gagal Booting v4.5! Pastiin config IP MongoDB '0.0.0.0/0' udah lo klik Open bre!</span>`;
+                document.getElementById('loader-text').innerHTML = `<span style="color: #ef4444;">❌ Gagal Booting v4.9! Cek logs server Jakarta lo bre!</span>`;
             }
         };
 
@@ -394,9 +395,6 @@
             }
         }
 
-        // =======================================================
-        // REVOLUSI SUPREME ANTI-MEMORY LEAK ⚙️ (ONE-COMMAND CONTROL)
-        // =======================================================
         function startCoreLiveEngine() {
             const d = new Date();
             globalSeconds = (d.getHours() * 3600) + (d.getMinutes() * 60) + d.getSeconds();
@@ -404,14 +402,12 @@
 
             syncWithServer().then(() => renderTrainsList());
 
-            // INTERVAL 1: Cukup update batin memori aja gaeess, BIAR GAK TUMBUK-TUMBUKAN RENDERING RAM NYA!
             setInterval(() => {
                 if (!isSimMode) {
                     syncWithServer(); 
                 }
             }, 30000);
 
-            // INTERVAL 2: Satu komando mutlak buat update jam, interpolasi, ama marker tiap 1 detik!
             setInterval(() => {
                 if (isSimMode) {
                     globalSeconds += timeMultiplier;
@@ -424,7 +420,7 @@
                     globalSeconds = (dt.getHours() * 3600) + (dt.getMinutes() * 60) + dt.getSeconds();
                 }
                 updateClockUI();
-                renderTrainsList(); // Hanya fungsi ini yang berhak ngerender tiap 1 detik![cite: 2]
+                renderTrainsList(); 
             }, 1000); 
         }
 
@@ -433,7 +429,8 @@
         }
 
         function selectAndFocusTrain(id) {
-            selectedTrainId = Number(id);
+            // FIXED TIPE DATA: ID dikunci jadi String utuh bawaan Mongo
+            selectedTrainId = id.toString();
             if (window.innerWidth <= 768) { toggleSidebar(); }
             openRundownPanel(id);
             renderTrainsList();
@@ -452,7 +449,8 @@
                 const relation = ka.relation || '-';
                 const status = ka.status || 'OTW';
 
-                const trainId = Number(ka.id || ka.tr_id);
+                // FIXED TIPE DATA: Ambil ID murni dalam bentuk String teks
+                const trainId = ka.id.toString();
                 const matchKeyword = trName.toLowerCase().includes(keyword) || trCd.toLowerCase().includes(keyword);
                 if (keyword !== "" && !matchKeyword) return;
 
@@ -460,7 +458,7 @@
 
                 const isSelectedClass = (selectedTrainId === trainId) ? "selected" : "";
                 htmlListContent += `
-                    <div class="train-card ${isSelectedClass}" onclick="selectAndFocusTrain(${trainId})">
+                    <div class="train-card ${isSelectedClass}" onclick="selectAndFocusTrain('${trainId}')">
                         <div class="train-name">${trName} [${trCd}]</div>
                         <div style="color: #94a3b8; font-size: 11px; margin-top:2px;">Relasi: ${relation}</div>
                         <div style="font-size: 11px; color:#4ade80; font-weight:bold; margin-top:4px;">📍 ${status}</div>
@@ -510,7 +508,7 @@
             listContainer.innerHTML = htmlListContent === "" ? `<span style="color:#64748b; font-size:12px;">Kagak ada armada premium aktif di menit lintas ini, gaeess. 🥀</span>` : htmlListContent;
 
             activeMarkersMap.forEach((marker, id) => { 
-                if (!runningTrainsThisTurn.has(id)) { 
+                if (!runningTrainsThisTurn.has(id.toString())) { 
                     map.removeLayer(marker); 
                     activeMarkersMap.delete(id); 
                 } 
