@@ -283,13 +283,14 @@
             try {
                 const loaderText = document.getElementById('loader-text');
                 
+                // FIXED KOCAK: Path direktori udah bener ke basedata/ 😹
                 loaderText.innerText = "⏳ Membaca data infrastruktur stasiun...";
-                const resStations = await fetch('database/stations.json');
+                const resStations = await fetch('basedata/stations.json');
                 const stationsData = await resStations.json();
                 dbStations = stationsData.data || stationsData; 
 
                 loaderText.innerText = "⏳ Membaca geometri jaringan rel...";
-                const resRoutes = await fetch('database/routes.json');
+                const resRoutes = await fetch('basedata/routes.json');
                 const routesData = await resRoutes.json();
                 dbRoutes = routesData.data || routesData;
 
@@ -300,7 +301,7 @@
                 startCoreLiveEngine();
             } catch (err) {
                 console.error(err);
-                document.getElementById('loader-text').innerHTML = `<span style="color: #ef4444;">❌ Gagal Booting v2.5! Pastiin file JSON statis ada di folder 'database/' bre!</span>`;
+                document.getElementById('loader-text').innerHTML = `<span style="color: #ef4444;">❌ Gagal Booting v2.5! Pastiin file JSON statis ada di folder 'basedata/' bre!</span>`;
             }
         };
 
