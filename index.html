@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PUSDALOP ENGINE REBORN v3.6 (Anti-Memory Leak Supreme)</title>
+    <title>PUSDALOP ENGINE REBORN v4.5 (Full MongoDB Automated)</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -96,12 +96,12 @@
 
     <div id="loader">
         <div class="spinner"></div>
-        <div id="loader-text">Sinkronisasi Jaringan Statis...</div>
+        <div id="loader-text">Sinkronisasi Jaringan Cloud...</div>
     </div>
 
     <div id="sidebar">
         <h1>🎛️ PUSDALOP REBORN</h1>
-        <div class="sub-title">Hybrid Serverless Engine (v3.6)</div>
+        <div class="sub-title">MongoDB Automated Cloud Engine (v4.5)</div>
         
         <div class="time-box">
             <label style="font-size: 10px; font-weight: bold; color: #4ade80;" id="clock-label">⚡ LIVE SYSTEM CLOCK:</label>
@@ -130,7 +130,7 @@
         <div>
             <h3 style="font-size: 12px; color: #f97316; margin-bottom: 8px;">🚂 DAFTAR UNIT LIVE DI LINTASAN:</h3>
             <div id="train-list-container" style="display: flex; flex-direction: column; gap: 8px;">
-                <span style="color: #64748b; font-size: 12px;">Menghubungkan ke API Vercel...</span>
+                <span style="color: #64748b; font-size: 12px;">Menghubungkan ke API Cloud Vercel...</span>
             </div>
         </div>
     </div>
@@ -152,13 +152,6 @@
 
         function closeRightPanel() {
             document.getElementById('right-panel').classList.remove('open');
-        }
-
-        function formatMsToTime(ms) {
-            let sec = Math.floor(ms / 1000);
-            let h = Math.floor(sec / 3600) % 24;
-            let m = Math.floor((sec % 3600) / 60);
-            return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
         }
 
         function openRundownPanel(trainId) {
@@ -267,15 +260,14 @@
             try {
                 const loaderText = document.getElementById('loader-text');
                 
-                loaderText.innerText = "⏳ Membaca data infrastruktur stasiun...";
-                const resStations = await fetch('basedata/stations.json');
-                const stationsData = await resStations.json();
-                dbStations = stationsData.data || stationsData; 
+                // FIXED BYPASS JALUR MONGO v4.5: Gak narik dari folder local 'basedata/' lagi gaeesss!
+                loaderText.innerText = "⏳ Menghubungkan database stasiun cloud MongoDB...";
+                const resStations = await fetch('/api/get-live?type=stations');
+                dbStations = await resStations.json();
 
-                loaderText.innerText = "⏳ Membaca geometri jaringan rel...";
-                const resRoutes = await fetch('basedata/routes.json');
-                const routesData = await resRoutes.json();
-                dbRoutes = routesData.data || routesData;
+                loaderText.innerText = "⏳ Sinkronisasi data rute geometri rel cloud MongoDB...";
+                const resRoutes = await fetch('/api/get-live?type=routes');
+                dbRoutes = await resRoutes.json();
 
                 renderStationMarkers(); 
                 renderStaticRoutes();
@@ -284,7 +276,7 @@
                 startCoreLiveEngine();
             } catch (err) {
                 console.error(err);
-                document.getElementById('loader-text').innerHTML = `<span style="color: #ef4444;">❌ Gagal Booting v3.6! Pastiin file JSON statis ada di folder 'basedata/' bre!</span>`;
+                document.getElementById('loader-text').innerHTML = `<span style="color: #ef4444;">❌ Gagal Booting v4.5! Pastiin config IP MongoDB '0.0.0.0/0' udah lo klik Open bre!</span>`;
             }
         };
 
@@ -403,7 +395,7 @@
         }
 
         // =======================================================
-        // REVOLUSI SUPREME ANTI-MEMORY LEAK v3.6 ⚙️
+        // REVOLUSI SUPREME ANTI-MEMORY LEAK ⚙️ (ONE-COMMAND CONTROL)
         // =======================================================
         function startCoreLiveEngine() {
             const d = new Date();
@@ -412,14 +404,14 @@
 
             syncWithServer().then(() => renderTrainsList());
 
-            // INTERVAL 1: Cukup sedot data doang di background, GAK BOLEH ikut ngerender UI![cite: 2]
+            // INTERVAL 1: Cukup update batin memori aja gaeess, BIAR GAK TUMBUK-TUMBUKAN RENDERING RAM NYA!
             setInterval(() => {
                 if (!isSimMode) {
                     syncWithServer(); 
                 }
             }, 30000);
 
-            // INTERVAL 2: Satu komando mutlak buat update jam, interpolasi, ama gambar marker![cite: 2]
+            // INTERVAL 2: Satu komando mutlak buat update jam, interpolasi, ama marker tiap 1 detik!
             setInterval(() => {
                 if (isSimMode) {
                     globalSeconds += timeMultiplier;
