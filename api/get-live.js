@@ -5,7 +5,7 @@ const path = require('path');
 export default function handler(req, res) {
     try {
         // 🚨 CONFIG: PASTIIN NAMA FOLDER DI SINI SAMA KAYA DI GITHUB LU (database atau basedata)
-        const NAMA_FOLDER_DATA = 'database'; 
+        const NAMA_FOLDER_DATA = 'basedata'; 
 
         const filePath = path.join(process.cwd(), NAMA_FOLDER_DATA, 'trains.json');
         
